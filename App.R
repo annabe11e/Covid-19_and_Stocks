@@ -32,8 +32,11 @@ totaldeaths <- read_csv("https://opendata.arcgis.com/datasets/3dbd3e633b344c7c9a
 us <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv")%>%
   filter(date>=as.Date("2020-02-03")) 
 MD <- read_csv("MDpop.csv") %>% select(c(1,2))
-ds <- read_csv("https://raw.githubusercontent.com/Lucas-Czarnecki/COVID-19-CLEANED-JHUCSSE/master/COVID-19_CLEAN/csse_covid_19_time_series_cleaned/time_series_covid19_tidy_US.csv")%>% 
+ds1 <- read_csv("https://raw.githubusercontent.com/Lucas-Czarnecki/COVID-19-CLEANED-JHUCSSE/master/COVID-19_CLEAN/csse_covid_19_time_series_cleaned/time_series_covid19_tidy_US.csv")%>% 
   select(-UID, -iso2, -iso3, -code3, -Country_Region, -Combined_Key,-Latitude, -Longitude)
+ds2 <- read_csv("https://raw.githubusercontent.com/Lucas-Czarnecki/COVID-19-CLEANED-JHUCSSE/master/COVID-19_CLEAN/csse_covid_19_time_series_cleaned/time_series_covid19_tidy_US2.csv")%>% 
+  select(-UID, -iso2, -iso3, -code3, -Country_Region, -Combined_Key,-Latitude, -Longitude)
+ds <-rbind(ds1,ds2)
 county_map <- read_csv("county_map.csv")
 names(county_map)[8]<- "FIPS"
 policy<-read_csv("policy timeline.csv")
@@ -146,7 +149,7 @@ ui <- dashboardPagePlus(
                             tabPanel("Map",
                               column(3,
                                 sliderInput("date2", label ="Date",
-                                       min = as.Date("2020-02-01"), max = as.Date(Sys.Date()-days(1)),
+                                       min = as.Date("2020-02-01"), max = as.Date(max(ds$Date)),
                                        value = as.Date(Sys.Date()-days(1)), animate = FALSE)
                                   ),
                             column(9, 
@@ -194,7 +197,6 @@ ui <- dashboardPagePlus(
                     )),
                     br(),
                     fluidRow(
-                     # h3("More on this topic"),
                       box(title="How has COVID-19 hit the stock market \n| Chicago Booth Review",status = "primary", 
                           solidHeader = TRUE, collapsible = TRUE,
                              HTML('<iframe width="100%" height="250" 
@@ -251,9 +253,6 @@ ui <- dashboardPagePlus(
                       p("Method: The group used the most-up-to date data on Maryland covid-19 to plot the trajectory of new cases, deaths and new confirmed death vs. tests."),
                       p("Analysis: The graphs show that the new cases and deaths caused by covid-19 have been declining since June for all counties in Maryland. There is, however, a slight increase in new cases in late July. It will be interesting to see how the daily new cases in Maryland evolve in the near future. 
                        The graph of daily new confirmed cases vs. daily tests taken has shown a positive relationship between the daily new confirmed cases and daily tests taken."),
-                      # strong("Map"),
-                      # p("Method: we used the most up-to-date data from the website to plot a map to show the numbers of cases in each state and how the epicenter of the virus moved overtime."),
-                      # p("Analysis: as our map shows, there were more cases in the upper east coast at the beginning of the virus outbreak, but as we approach July, the cases in the lower west coast (California, to be specific) and the middle started to grow significantly."),
                       strong("Cases vs. Stocks"),
                       p("Method: The group imported data from official websites for stock closing prices as well as daily new confirmed cases in the US. We wrote a program to plot the data side by side for easy comparison. We also programmed a feature for users to search for any stocks they’re interested in and compare the stock trajectory with covid-19 new confirmed cases in the US trajectory."),
                       p("Analysis: It is very interesting to note that the overall stock market is going in the same direction as daily new confirmed cases, as one can observe by choosing S&P 500, Dow Jones or NASDAQ indexes.However, different industries react differently to the pandemic. For example, Boeing's stock has decreased dramatically, but Netflix's stock price has increased dramatically.
@@ -370,6 +369,7 @@ server <- function(input, output, session) {
                                          loc_ds$Confirmed>=10000 & loc_ds$Confirmed<100000 ~ "6",
                                          loc_ds$Confirmed>=100000 ~ "7")
       county_map$FIPS = as.numeric(county_map$FIPS)
+      loc_ds$FIPS = as.numeric(loc_ds$FIPS)
       county_full = left_join(county_map, loc_ds, by = "FIPS")
       
       m <- ggplot(data = county_full%>% na.omit,
@@ -390,9 +390,6 @@ server <- function(input, output, session) {
     
     g = reactive({
       
-      # validate(
-      #   need(input$text!="", "Please input a ticker."))
-      # 
       if(input$text==""){
         stock <- get.clean.data("AMZN",
                                 first.date = as.Date('2020-02-01'),
